@@ -1,0 +1,14 @@
+1482095187248	Delete element
+1482248694845	Rename field 'credits'
+1482248705403	Rename field 'wins'
+1482248716443	Rename field 'losses'
+1482248725484	Rename field 'totalCredits'
+1482248734520	Rename field 'noOfGames'
+1482248748900	Rename field 'average'
+1482248757454	Rename field 'clip'
+1482248865788	Rename method 'reelOneMouseClicked'
+1482248880346	Rename method 'reelTwoMouseClicked'
+1482248888985	Rename method 'reelThreeMouseClicked'
+1482249461515	Delete element
+1482249484502	Delete element
+1482249504227	Rename resource 'spin2.wav'

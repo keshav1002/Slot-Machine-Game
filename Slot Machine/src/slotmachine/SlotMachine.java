@@ -1,0 +1,661 @@
+package slotmachine;
+
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Image;
+import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.swing.BorderFactory;
+import javax.swing.ImageIcon;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.UIManager;
+import javax.swing.UIManager.LookAndFeelInfo;
+
+public class SlotMachine extends JFrame {
+	// Declaration of GUI components
+	private BackgroundPanel panel;
+	private JButton reel1;
+	private JButton reel2;
+	private JButton reel3;
+	private JLabel creditsLbl1;
+	private JLabel creditsLbl2;
+	private JLabel betLbl1;
+	private JLabel betLbl2;
+	private JButton spinBtn;
+	private JButton addCreditBtn;
+	private JButton betOneBtn;
+	private JButton betMaxBtn;
+	private JButton resetBtn;
+	private JButton statisticsBtn;
+	private Container contentPane;
+	private Image image;
+
+	// Declaration of thread and reel related components
+	private int reel1Value;
+	private int reel2Value;
+	private int reel3Value;
+	private int delay;
+	private Thread reelOneThread;
+	private Thread reelTwoThread;
+	private Thread reelThreeThread;
+	private boolean reel1Clicked;
+	private boolean reel2Clicked;
+
+	// Declaration of variables required for calculations
+	private int creditsLeft;
+	private int betAmount;
+	private int noOfWins;
+	private int noOfLosses;
+	private int totalCreditsWon;
+	private int noOfGamesPlayed;
+	private double averageNettedCredits;
+	private Clip soundClip;
+
+	// initializing all components inside the constructor
+	private SlotMachine() {
+		creditsLeft = 10;
+		betAmount = 0;
+		noOfWins = 0;
+		noOfLosses = 0;
+		totalCreditsWon = 0;
+		noOfGamesPlayed = 0;
+		delay = 1000;
+		ImageIcon bg = new ImageIcon(getClass().getResource("/bg.jpg"));
+		image = bg.getImage();
+		panel = new BackgroundPanel(image);
+		contentPane = getContentPane();
+		getContentPane().add(panel, BorderLayout.NORTH);
+		reel1 = new JButton();
+		reel2 = new JButton();
+		reel3 = new JButton();
+		creditsLbl1 = new JLabel("Credits Left : ");
+		creditsLbl2 = new JLabel(String.valueOf(creditsLeft));
+		betLbl1 = new JLabel("Bet Amount : ");
+		betLbl2 = new JLabel(String.valueOf(betAmount));
+		spinBtn = new JButton("Spin");
+		addCreditBtn = new JButton("Add Coin");
+		betOneBtn = new JButton("Bet One");
+		betMaxBtn = new JButton("Bet Max");
+		resetBtn = new JButton("Reset");
+		statisticsBtn = new JButton("Statistics");
+	}
+
+	public static void main(String[] args) {
+		// Nimbus Look and Feel
+		try {
+			for (LookAndFeelInfo info : UIManager.getInstalledLookAndFeels()) {
+				if ("Nimbus".equals(info.getName())) {
+					UIManager.setLookAndFeel(info.getClassName());
+					break;
+				}
+			}
+		} catch (Exception e) {
+		}
+
+		// Creating the Frame and setting it visible
+		SlotMachine sm = new SlotMachine();
+		sm.createGUI();
+		sm.setTitle("Slot Machine");
+		sm.pack();
+		sm.setSize(1000, 850);
+		sm.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		sm.setVisible(true);
+	}
+
+	private void createGUI() {
+
+		// the constraint object to manage constraints of each component when
+		// placing it in the panel
+		GridBagConstraints c = new GridBagConstraints();
+
+		// adding coordinates for each component when adding to the panel
+		c.gridx = 0;
+		c.gridy = 0;
+		c.insets = new Insets(40, 10, 10, 10);
+		Dimension preferredSize = new Dimension(200, 200);
+		reel1.setPreferredSize(preferredSize);
+		panel.add(reel1, c);
+
+		c.gridx = 1;
+		c.gridy = 0;
+		reel2.setPreferredSize(preferredSize);
+		panel.add(reel2, c);
+
+		c.gridx = 2;
+		c.gridy = 0;
+		reel3.setPreferredSize(preferredSize);
+		panel.add(reel3, c);
+
+		c.gridx = 1;
+		c.gridy = 1;
+		c.insets = new Insets(50, 0, 0, 0);
+		spinBtn.setFont(new Font("Segoe UI", Font.PLAIN, 50));
+		panel.add(spinBtn, c);
+
+		c.gridx = 3;
+		c.gridy = 0;
+		c.insets = new Insets(-50, 20, 0, 0);
+		creditsLbl1.setFont(new Font("Segoe UI", Font.PLAIN, 30));
+		creditsLbl1.setForeground(Color.WHITE);
+		panel.add(creditsLbl1, c);
+
+		c.gridx = 4;
+		c.gridy = 0;
+		c.insets = new Insets(-50, 0, 0, 0);
+		creditsLbl2.setFont(new Font("Segoe UI", Font.PLAIN, 30));
+		creditsLbl2.setForeground(Color.WHITE);
+		panel.add(creditsLbl2, c);
+
+		c.gridx = 3;
+		c.gridy = 1;
+		c.insets = new Insets(-300, 20, 0, 0);
+		addCreditBtn.setFont(new Font("Segoe UI", Font.PLAIN, 30));
+		panel.add(addCreditBtn, c);
+
+		c.gridx = 3;
+		c.gridy = 1;
+		c.insets = new Insets(-150, 20, 0, 0);
+		betLbl1.setFont(new Font("Segoe UI", Font.PLAIN, 30));
+		betLbl1.setForeground(Color.WHITE);
+		panel.add(betLbl1, c);
+
+		c.gridx = 4;
+		c.gridy = 1;
+		c.insets = new Insets(-150, 0, 0, 0);
+		betLbl2.setFont(new Font("Segoe UI", Font.PLAIN, 30));
+		betLbl2.setForeground(Color.WHITE);
+		panel.add(betLbl2, c);
+
+		c.gridx = 3;
+		c.gridy = 2;
+		c.insets = new Insets(-230, 20, 0, 0);
+		betOneBtn.setFont(new Font("Segoe UI", Font.PLAIN, 30));
+		panel.add(betOneBtn, c);
+
+		c.gridx = 3;
+		c.gridy = 2;
+		c.insets = new Insets(-100, 20, 0, 0);
+		betMaxBtn.setFont(new Font("Segoe UI", Font.PLAIN, 30));
+		panel.add(betMaxBtn, c);
+
+		c.gridx = 3;
+		c.gridy = 2;
+		c.insets = new Insets(20, 20, 0, 0);
+		resetBtn.setFont(new Font("Segoe UI", Font.PLAIN, 30));
+		panel.add(resetBtn, c);
+
+		c.gridx = 0;
+		c.gridy = 2;
+		c.insets = new Insets(20, 0, 0, 0);
+		statisticsBtn.setFont(new Font("Segoe UI", Font.PLAIN, 30));
+		panel.add(statisticsBtn, c);
+
+		// Disabling these components until the player starts betting or
+		// spinning
+		spinBtn.setEnabled(false);
+		reel1.setEnabled(false);
+		reel2.setEnabled(false);
+		reel3.setEnabled(false);
+
+		// Action Listener to specify what to do when the spin button is clicked
+		spinBtn.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				spinBtnActionPerformed(e);
+			}
+		});
+
+		// Action Listener to specify what to do when the add credit button is
+		// clicked
+		addCreditBtn.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				addCreditBtnActionPerformed(e);
+			}
+		});
+
+		// Action Listener to specify what to do when the bet one button is
+		// clicked
+		betOneBtn.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				if (creditsLeft > 0) {
+					betOneBtnActionPerformed(e);
+				} else {
+					JOptionPane.showMessageDialog(null, "Insufficient Credits", "Error", JOptionPane.WARNING_MESSAGE);
+				}
+			}
+		});
+
+		// Action Listener to specify what to do when the bet max button is
+		// clicked
+		betMaxBtn.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				if (creditsLeft > 2) {
+					betMaxBtnActionPerformed(e);
+				} else {
+					JOptionPane.showMessageDialog(null, "Insufficient Credits", "Error", JOptionPane.WARNING_MESSAGE);
+				}
+			}
+		});
+
+		// Action Listener to specify what to do when the reset button is
+		// clicked
+		resetBtn.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				resetBtnActionPerformed(e);
+			}
+		});
+
+		// Action Listener to specify what to do when the statistics button is
+		// clicked
+		statisticsBtn.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				statisticsBtnActionPerformed(e);
+			}
+		});
+
+		// Action Listener to specify what to do when the reel1 button is
+		// clicked
+		reel1.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				reelOneActionPerformed(e);
+				reel1Clicked = true;
+			}
+		});
+
+		// Action Listener to specify what to do when the reel2 button is
+		// clicked
+		reel2.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				// this button will only work if reel1 has been clicked
+				if (reel1Clicked) {
+					reelTwoActionPerformed(e);
+					reel2Clicked = true;
+				}
+			}
+		});
+
+		// Action Listener to specify what to do when the reel3 button is
+		// clicked
+		reel3.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				// this button will only work if reel1 and reel2 has been
+				// clicked
+				if (reel2Clicked) {
+					reelThreeActionPerformed(e);
+					checkReel();
+					reel1Clicked = false;
+					reel2Clicked = false;
+				}
+			}
+		});
+
+	}
+
+	// method to handle the action performed when spin button is clicked
+	private void spinBtnActionPerformed(ActionEvent e) {
+		reel1.setEnabled(true);
+		reel2.setEnabled(true);
+		reel3.setEnabled(true);
+		soundFx("spinBtn");
+		reel1Spin();
+		reel2Spin();
+		reel3Spin();
+		soundFx("spin");
+		resetBtn.setEnabled(false);
+		spinBtn.setEnabled(false);
+		statisticsBtn.setEnabled(false);
+		noOfGamesPlayed++;
+	}
+
+	// method to handle the action performed when add credit button is clicked
+	private void addCreditBtnActionPerformed(ActionEvent e) {
+		creditsLeft++;
+		soundFx("coin");
+		creditsLbl2.setText(String.valueOf(creditsLeft));
+	}
+
+	// method to handle the action performed when bet one button is clicked
+	private void betOneBtnActionPerformed(ActionEvent e) {
+		addCreditBtn.setEnabled(false);
+		creditsLeft--;
+		betAmount++;
+		betLbl2.setText(String.valueOf(betAmount));
+		spinBtn.setEnabled(true);
+		if (betAmount >= 3) {
+			betOneBtn.setEnabled(false);
+			betMaxBtn.setEnabled(false);
+		}
+		creditsLbl2.setText(String.valueOf(creditsLeft));
+	}
+
+	// method to handle the action performed when bet max button is clicked
+	private void betMaxBtnActionPerformed(ActionEvent e) {
+		addCreditBtn.setEnabled(false);
+		creditsLeft -= (3 - betAmount);
+		betAmount += (3 - betAmount);
+		betLbl2.setText(String.valueOf(betAmount));
+		spinBtn.setEnabled(true);
+		if (betAmount >= 3) {
+			betOneBtn.setEnabled(false);
+			betMaxBtn.setEnabled(false);
+		}
+		creditsLbl2.setText(String.valueOf(creditsLeft));
+	}
+
+	// method to handle the action performed when reset button is clicked
+	private void resetBtnActionPerformed(ActionEvent e) {
+		creditsLeft += betAmount;
+		betAmount = 0;
+		betLbl2.setText(String.valueOf(betAmount));
+		creditsLbl2.setText(String.valueOf(creditsLeft));
+		betOneBtn.setEnabled(true);
+		betMaxBtn.setEnabled(true);
+		spinBtn.setEnabled(false);
+	}
+
+	// method to handle the action performed when statistics button is clicked
+	private void statisticsBtnActionPerformed(ActionEvent e) {
+		/*
+		 * Im creating the the frame and frame components for the statistics
+		 * window and setting the action listeners of the buttons in this method
+		 * itself
+		 */
+		JFrame frame = new JFrame("Statistics");
+		JPanel panel = new JPanel(new GridBagLayout());
+		Container contentPane = frame.getContentPane();
+		contentPane.add(panel);
+		frame.getContentPane().add(panel, BorderLayout.NORTH);
+		GridBagConstraints c = new GridBagConstraints();
+		averageNettedCredits = 0;
+		if (noOfGamesPlayed > 0) {
+			averageNettedCredits = totalCreditsWon * 1.0 / noOfGamesPlayed * 1.0;
+		}
+
+		JLabel winsLbl1 = new JLabel("Wins : ");
+		c.gridx = 0;
+		c.gridy = 0;
+		c.insets = new Insets(50, 0, 0, 50);
+		panel.add(winsLbl1, c);
+
+		JLabel winsLbl2 = new JLabel(String.valueOf(noOfWins));
+		c.gridx = 1;
+		c.gridy = 0;
+		c.insets = new Insets(50, -50, 0, 0);
+		panel.add(winsLbl2, c);
+
+		JLabel losselsLbl1 = new JLabel("Losses : ");
+		c.gridx = 0;
+		c.gridy = 1;
+		c.insets = new Insets(20, 0, 0, 50);
+		panel.add(losselsLbl1, c);
+
+		JLabel losselsLbl2 = new JLabel(String.valueOf(noOfLosses));
+		c.gridx = 1;
+		c.gridy = 1;
+		c.insets = new Insets(20, 0, 0, 50);
+		panel.add(losselsLbl2, c);
+
+		JLabel totalCreditsLbl1 = new JLabel("Total Credits won : ");
+		c.gridx = 0;
+		c.gridy = 2;
+		c.insets = new Insets(20, 0, 0, 50);
+		panel.add(totalCreditsLbl1, c);
+
+		JLabel totalCreditsLbl2 = new JLabel(String.valueOf(totalCreditsWon));
+		c.gridx = 1;
+		c.gridy = 2;
+		c.insets = new Insets(20, 0, 0, 50);
+		panel.add(totalCreditsLbl2, c);
+
+		JLabel avgLbl1 = new JLabel("Avg Netted credits : ");
+		c.gridx = 0;
+		c.gridy = 3;
+		c.insets = new Insets(20, 0, 0, 50);
+		panel.add(avgLbl1, c);
+
+		JLabel avgLbl2 = new JLabel(String.valueOf(averageNettedCredits));
+		c.gridx = 1;
+		c.gridy = 3;
+		c.insets = new Insets(20, 0, 0, 50);
+		panel.add(avgLbl2, c);
+
+		JButton saveBtn = new JButton("Save Statistics");
+		c.gridx = 0;
+		c.gridy = 4;
+		c.insets = new Insets(30, 25, 0, 0);
+		panel.add(saveBtn, c);
+
+		saveBtn.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				DateFormat dateFormat = new SimpleDateFormat("dd_MM_yyyy hh_mm_ss");
+				Date date = new Date();
+				String filename = dateFormat.format(date) + ".txt";
+				File file = new File(filename);
+				try {
+					FileWriter fw = new FileWriter(file, true);
+					PrintWriter pw = new PrintWriter(fw, true);
+					pw.println("Wins\tLosses\tAvg Netted");
+					pw.println();
+					pw.println(noOfWins + "\t\t" + noOfLosses + "\t\t" + averageNettedCredits);
+					pw.close();
+				} catch (IOException error) {
+					error.printStackTrace();
+				}
+				System.out.println("Statistics Successfully Saved");
+				System.out.println("Filename : " + filename);
+			}
+		});
+
+		frame.setSize(400, 400);
+		frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+		frame.setVisible(true);
+	}
+
+	// method to handle the action performed when reel one button is clicked
+	private void reelOneActionPerformed(ActionEvent e) {
+		reelOneThread.stop();
+	}
+
+	// method to handle the action performed when reel two button is clicked
+	private void reelTwoActionPerformed(ActionEvent e) {
+		reelTwoThread.stop();
+	}
+
+	// method to handle the action performed when reel three button is clicked
+	private void reelThreeActionPerformed(ActionEvent e) {
+		reelThreeThread.stop();
+	}
+
+	// method that will assign the reel symbols to reel1 in a loop using the
+	// reelOneThread object
+	private void reel1Spin() {
+		Reel r1 = new Reel();
+		List<Symbol> symbolList = r1.spin();
+		reelOneThread = new Thread() {
+			public void run() {
+				while (true) {
+					for (Symbol symbl : symbolList) {
+						ImageIcon imgIcon = symbl.getImage();
+						reel1.setIcon(imgIcon);
+						reel1Value = symbl.getValue();
+						try {
+							Thread.sleep(delay);
+						} catch (Exception e) {
+						}
+					}
+				}
+			}
+		};
+		reelOneThread.start();
+	}
+
+	// method that will assign the reel symbols to reel2 in a loop using the
+	// reelTwoThread object
+	private void reel2Spin() {
+		Reel r1 = new Reel();
+		List<Symbol> symbolList = r1.spin();
+		reelTwoThread = new Thread() {
+			public void run() {
+				while (true) {
+					for (Symbol symbl : symbolList) {
+						ImageIcon imgIcon = symbl.getImage();
+						reel2.setIcon(imgIcon);
+						reel2Value = symbl.getValue();
+						try {
+							Thread.sleep(delay);
+						} catch (Exception e) {
+						}
+					}
+				}
+			}
+		};
+		reelTwoThread.start();
+	}
+
+	// method that will assign the reel symbols to reel3 in a loop using the
+	// reelThreeThread object
+	private void reel3Spin() {
+		Reel r1 = new Reel();
+		List<Symbol> symbolList = r1.spin();
+		reelThreeThread = new Thread() {
+			public void run() {
+				while (true) {
+					for (Symbol symbl : symbolList) {
+						ImageIcon imgIcon = symbl.getImage();
+						reel3.setIcon(imgIcon);
+						reel3Value = symbl.getValue();
+						try {
+							Thread.sleep(delay);
+						} catch (Exception e) {
+						}
+					}
+				}
+			}
+		};
+		reelThreeThread.start();
+	}
+
+	/*
+	 * method that will check the values of the reels and display appropriate
+	 * messages (win/loss) after they have stopped spinning
+	 */
+	private void checkReel() {
+		soundClip.stop();
+		int credits = 0;
+		String status = "";
+
+		if (reel1Value == reel2Value && reel2Value == reel3Value) {
+			credits = betAmount * reel1Value;
+			status = "won";
+		} else if (reel1Value == reel2Value) {
+			status = "continue";
+			credits = betAmount;
+		} else if (reel2Value == reel3Value) {
+			status = "continue";
+			credits = betAmount;
+		} else if (reel1Value == reel3Value) {
+			status = "continue";
+			credits = betAmount;
+		} else {
+			status = "lost";
+		}
+
+		if (status.equals("won")) {
+			soundFx("won");
+			this.creditsLeft += credits;
+			creditsLbl2.setText(String.valueOf(this.creditsLeft));
+			JOptionPane.showMessageDialog(null, "Congrats, You Won..." + credits + " credits :)", "You Won!!",
+					JOptionPane.INFORMATION_MESSAGE);
+			noOfWins++;
+			totalCreditsWon += credits;
+		} else if (status.equals("lost")) {
+			soundFx("lost");
+			this.creditsLeft += credits;
+			creditsLbl2.setText(String.valueOf(this.creditsLeft));
+			JOptionPane.showMessageDialog(null, "Sorry you didn't win :(", "You Lost!!", JOptionPane.WARNING_MESSAGE);
+			noOfLosses++;
+		} else if (status.equals("continue")) {
+			soundFx("continue");
+			this.creditsLeft += credits;
+			creditsLbl2.setText(String.valueOf(this.creditsLeft));
+			JOptionPane.showMessageDialog(null, "You have won a respin, bet amount is restored :)",
+					"You Won a Second Chance!!", JOptionPane.WARNING_MESSAGE);
+			noOfWins++;
+		}
+
+		// Resetting all the elements in the GUI to prepare for the next game
+		betAmount = 0;
+		betLbl2.setText(String.valueOf(this.betAmount));
+		spinBtn.setEnabled(false);
+		addCreditBtn.setEnabled(true);
+		betOneBtn.setEnabled(true);
+		betMaxBtn.setEnabled(true);
+		resetBtn.setEnabled(true);
+		statisticsBtn.setEnabled(true);
+		reel1.setIcon(null);
+		reel2.setIcon(null);
+		reel3.setIcon(null);
+		reel1.setEnabled(false);
+		reel2.setEnabled(false);
+		reel3.setEnabled(false);
+
+		if (this.creditsLeft <= 0) {
+			JOptionPane.showMessageDialog(null, "Game Over, Good Game :)", "Game Over!!!", JOptionPane.WARNING_MESSAGE);
+			System.exit(0);
+		}
+
+	}
+
+	// sound effects method that will play the sound depending on the condition
+	private void soundFx(String condition) {
+		String soundName = "Sounds/";
+
+		if (condition.equals("won")) {
+			soundName += "won.wav";
+		} else if (condition.equals("lost")) {
+			soundName += "lost.wav";
+		} else if (condition.equals("coin")) {
+			soundName += "coin.wav";
+		} else if (condition.equals("spin")) {
+			soundName += "spin.wav";
+		} else if (condition.equals("spinBtn")) {
+			soundName += "spinBtn.wav";
+		} else if (condition.equals("continue")) {
+			soundName += "continue.wav";
+		}
+
+		try {
+			AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(new File(soundName).getAbsoluteFile());
+			soundClip = AudioSystem.getClip();
+			soundClip.open(audioInputStream);
+			soundClip.start();
+			if (condition.equals("spin")) {
+				soundClip.loop(Clip.LOOP_CONTINUOUSLY);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+}
